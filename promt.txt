@@ -1,0 +1,62 @@
+#envoy.yaml file
+
+node:
+  id: node1
+  cluster: cluster1
+
+static_resources:
+  listeners:
+    - name: listener_0
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 8086 }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: backend
+                      domains:
+                        - "*"
+                      routes:
+                        - match: { prefix: "/" }
+                          route: { cluster: backend_service }
+                http_filters:
+                  - name: envoy.filters.http.router
+  clusters:
+    - name: backend_service
+      connect_timeout: 0.25s
+      type: LOGICAL_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: backend_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 127.0.0.1
+                      port_value: 3000
+
+
+//Dockerfile
+FROM envoyproxy/envoy:v1.22.0
+
+COPY ./envoy.yaml /etc/envoy/envoy.yaml
+
+ENTRYPOINT [ "/usr/local/bin/envoy" ]
+CMD [ "-c /etc/envoy/envoy.yaml", "-l trace", "--log-path /tmp/envoy_info.log" ]
+
+//docker-compose.yml file
+version: '3'
+services:
+  envoy:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    image: envoy/local
+    ports:
+      - "8086:8086"
