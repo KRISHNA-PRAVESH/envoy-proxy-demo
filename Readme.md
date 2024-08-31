@@ -16,4 +16,4 @@ cd ..
 docker-compose up
 ```
 
-_Now go to `localhost:8080` you'll get the home page returned from the node server.
+*Now go to `localhost:8080` you'll get the home page returned from the node server.*
